@@ -25,10 +25,21 @@ def main():
     ap.add_argument("--blocks", type=int, default=6)
     ap.add_argument("--alt_instructions", default="needle pickup,needle throw,knot tying")
     ap.add_argument("--out", default="bundle")
+    ap.add_argument("--closed_loop_iters", type=int, default=20, help="capped by the server at the clip's end; 0 = skip")
     a = ap.parse_args()
     H = {"X-API-Key": a.key}
     out = Path(a.out); out.mkdir(exist_ok=True)
     post = lambda p, j: requests.post(a.url + p, json=j, headers=H, timeout=1800).json()  # noqa: E731
+
+    def finish(j):  # poll a queued job until it ends
+        while j.get("status") not in ("done", "error"):
+            time.sleep(5)
+            j = requests.get(f"{a.url}/v1/jobs/{j['job_id']}", headers=H).json() | {"job_id": j["job_id"]}
+        return j
+
+    def fetch(url, name):
+        (out / name).write_bytes(requests.get(a.url + url, headers=H).content)
+        return name
 
     b = {"episode": a.episode, "frame": a.frame, "blocks": a.blocks}
     b["act"] = post("/v1/groot/act", {"episode": a.episode, "frame": a.frame})
@@ -39,19 +50,29 @@ def main():
     for src in ("gt", "groot"):
         j = post("/v1/cosmos/dream", {"episode": a.episode, "frame": a.frame,
                                        "action_source": src, "blocks": a.blocks})
-        while j.get("status") not in ("done", "error"):
-            time.sleep(5)
-            j = requests.get(f"{a.url}/v1/jobs/{j['job_id']}", headers=H).json() | {"job_id": j["job_id"]}
+        j = finish(j)
         print(src, j.get("status"), j.get("error", ""))
         if j.get("status") == "done":
-            mp4 = requests.get(a.url + j["video"], headers=H).content
-            (out / f"dream_{src}.mp4").write_bytes(mp4)
-            b["dreams"][src] = f"dream_{src}.mp4"
+            b["dreams"][src] = fetch(j["video"], f"dream_{src}.mp4")
+    files = list(b["dreams"].values())
+    # closed loop (CLOSED_LOOP.md): only if this server has it switched on
+    if a.closed_loop_iters and requests.get(a.url + "/health").json().get("closed_loop"):
+        b["open_loop_mono"] = post("/v1/groot/open_loop_mono", {"episode": a.episode, "start": 0, "steps": 10_000})
+        b["closed_loop"] = {}
+        for pol in ("groot", "recorded"):
+            j = finish(post("/v1/closed_loop", {"episode": a.episode, "frame": a.frame,
+                                                "iterations": a.closed_loop_iters, "policy": pol}))
+            print("closed loop", pol, j.get("status"), j.get("error", ""))
+            if j.get("status") == "done":
+                b["closed_loop"][pol] = {"frame": j.get("frame", a.frame), "iterations": j.get("iterations"),
+                                         "video": fetch(j["video"], f"closed_{pol}.mp4"),
+                                         "actions": fetch(j["actions"], f"closed_{pol}_actions.npy")}
+                files += [b["closed_loop"][pol]["video"], b["closed_loop"][pol]["actions"]]
     (out / "bundle.json").write_text(json.dumps(b))
     # the notebook extracts this zip into ./bundle/, so files sit at the zip root
     zpath = out.parent / f"seg4_bundle_{a.episode}.zip"
     with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
-        for f in ["bundle.json", *b["dreams"].values()]:
+        for f in ["bundle.json", *files]:
             z.write(out / f, arcname=f)
     print("bundle ->", out, "| zip ->", zpath, f"({zpath.stat().st_size / 1e6:.1f} MB)")
 

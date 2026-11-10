@@ -1,6 +1,6 @@
-# Closed loop inside the world model: setup notes (not implemented)
+# Closed loop inside the world model
 
-Status, Nov 10: **planned, not built.** These notes record what we checked and how to build it, so it can be picked up after the tutorial. Nothing here is on the server or in the notebooks yet.
+Status, Nov 10: **server side built on branch `seg4-closed-loop`, tested with a stand-in Cosmos worker; not yet run with the real Cosmos-H-Dreams, not deployed, no notebook section yet.** See "Implementation status" at the end.
 
 ## The idea
 
@@ -17,7 +17,7 @@ The open-loop sections (2–4 in the notebook) always give the policy the real v
 
 1. **It needs a different GR00T-H embodiment.** The notebook uses `jhu_imerse_dvrk`, which takes three cameras: `endoscope_left`, `wrist_left`, `wrist_right`. Cosmos only renders the endoscope view, so there are no wrist frames to feed back. Don't fake them (blank or real wrist frames would be out of distribution, or would leak the real future).
    - The downloaded checkpoint also has **`jhu_imerse_dvrk_mono`** (endoscope only). Checked Nov 10: it's in `embodiment_id.json` (id 15), `statistics.json` and `processor_config.json`, and the repo has `open_h/embodiments/jhu_imerse_dvrk/jhu_imerse_dvrk_mono_config.py`. Same 16-D state/action, same 50-step horizon, same `REL_XYZ_ROT6D` pose actions.
-   - **Not checked:** how good mono is on SutureBot, or whether it was trained on SutureBot at all. The model card doesn't say. Step 1 below measures it.
+   - **Measured Nov 10** (step 1 below): mono is *better* open loop than the 3-camera embodiment: xyz MAE 0.63 mm vs 1.37 mm on 1441, 0.62 vs 1.33 mm on 1447 (hold-pose baseline 1.16 / 1.33 mm). The model card doesn't say what mono was trained on, so we can't rule out that it saw these episodes; say so when presenting it.
    - For a fair comparison, show mono's **open-loop** score next to its closed-loop result. Don't compare it with the 3-camera numbers in Section 3.
 2. **Some of the drift is the world model's, not the policy's.** Cosmos frames are 288×512 and softer than the real 540×960 video, and each iteration restarts Cosmos from a single frame, so it loses its own history. Keep the notebook's existing split: a **recorded-actions** rollout run the same way (re-anchored every block) shows the world-model-only drift, and the GR00T-H closed loop adds policy error on top.
 3. **There's no success metric.** L1/SSIM against the real video only mean something for the first few seconds; after that the closed loop is allowed to diverge from what the surgeon did. Present it qualitatively (video side by side), plus L1/SSIM over time, plus the action trajectory against the recorded one.
@@ -85,3 +85,36 @@ All additive: the current endpoints and cache stay as they are.
 - Checkpoint: `nvidia/GR00T-H-N1.7` → `embodiment_id.json`, `statistics.json`, `processor_config.json`.
 - Cosmos block math and action format: `server/cosmos_actions.py`, `HANDOFF.md` §4.
 - Policy screening with a world model (Cosmos-Surg-dVRK): as stated in notebook section F; not re-checked against the Open-H report (https://arxiv.org/abs/2604.21017) for these notes.
+
+## Implementation status (Nov 10, branch `seg4-closed-loop`)
+
+**Feasibility (build step 1), done.** Endoscope-only GR00T-H next to the live server, official 50-step open-loop protocol:
+
+| Episode | mono, real frames | mono, Cosmos-like 288×512 frames | 3-camera (live server) | hold pose |
+|---|---|---|---|---|
+| 1441 (throw) | 0.63 mm / 0.021 / 0.058 rad | 0.67 mm / 0.023 / 0.061 rad | 1.37 mm / 0.021 / 0.148 rad | 1.16 mm / 0.017 / 0.061 rad |
+| 1447 (knot) | 0.62 mm / 0.025 / 0.071 rad | 0.64 mm / 0.027 / 0.064 rad | 1.33 mm / 0.030 / 0.297 rad | 1.33 mm / 0.020 / 0.046 rad |
+
+(xyz MAE / quaternion MAE / jaw MAE.) Shifting the input pose 1 cm moves the predicted path by exactly 10.0 mm, so the pose input is used as the reference, as expected for `REL_XYZ_ROT6D`. 145 ms per chunk, 6 GB GPU.
+
+**Built (build step 2):**
+- `cosmos_worker.py`: optional `input_png` (must be in `SHARED/inputs`); without it, behaviour is unchanged.
+- `gateway.py`:
+  - Loads the mono policy as a second instance (`CLOSED_LOOP=1`, the default; `0` skips it). Shares `GROOT_LOCK`.
+  - `POST /v1/groot/open_loop_mono` is the mono open-loop baseline, on real frames at Cosmos resolution.
+  - `POST /v1/closed_loop {episode, frame=-1, iterations=6, policy="groot"|"recorded", instruction}` is an async job polled with `/v1/jobs/{id}`. It runs on its own thread, so its worker calls interleave with dream jobs at the worker. Outputs `{job}.mp4` (context + 12·iterations frames, 10 fps; generated frame j ↔ raw frame `frame + 3j`) and `{job}_actions.npy` (36·iterations × 16 commanded actions, 30 Hz). `iterations` is capped so the rollout stays inside the real clip (1441 from 345: 7).
+  - The existing request models and cache keys are untouched.
+  - New optional `HOST` env.
+- `precompute.py`: when `/health` reports `closed_loop`, adds `open_loop_mono` and `closed_loop.{groot,recorded}` (video + actions) to the bundle. Adds about 0.1 MB per clip.
+
+**Tests run** (test gateway on :8010 with its own `SHARED_DIR`, CPU stand-in worker that runs the real action conversion and shifts the frame): 29/29 pass.
+- `/v1/groot/act` and `/v1/groot/open_loop` are identical to the live server, byte for byte.
+- `open_loop_mono` gives 0.71 mm (1441) and 0.75 mm (1447) through the server.
+- Closed-loop chaining: each block starts from the previous block's last frame; the reference pose is the real state for `recorded` and continues the commanded path for `groot` (max 1.3 mm from the last row sent); frame counts, action shapes and unit quaternions are right; temp files are cleaned up.
+- Caching, the iteration cap, two concurrent jobs, and 400/401 errors behave as intended.
+- `precompute.py` writes the closed-loop files into the zip.
+
+**Not done yet:**
+1. Run with the **real** Cosmos worker (needs the live worker swapped to this branch's `cosmos_worker.py`; backward compatible, about 2.5 min without new Cosmos videos while it warms up) and look at the videos. Then rerun the tests with `--real-cosmos`, and time one full 1441 run.
+2. Deploy: merge, `start_services.sh` (gateway +6 GB GPU, ~28 GB idle), re-precompute, and decide whether to re-upload the bundles to HF.
+3. Notebook section (v3 or v2 Explore), load test with ~10 concurrent closed loops.
