@@ -6,7 +6,7 @@ You are picking this up on the Brev instance itself, which has GPU, internet, Hu
 
 ## 1. Context
 
-- **Event:** CoRL 2026 tutorial, *Robot Learning on the Path to Surgical Autonomy*, **Nov 9, 2026**, Austin, in person. A 60-min hands-on block made of four 15-min segments, each its own Colab notebook.
+- **Event:** CoRL 2026 tutorial, *Robot Learning on the Path to Surgical Autonomy*, **Nov 12, 2026, 2–6 pm CT**, Austin, in person. A 60-min hands-on block made of four 15-min segments, each its own Colab notebook.
 - **Segment 4 (owner: Kiran Bhattacharyya, minutes 45–60):** robot learning and evaluation with a VLA plus a world model, on SutureBot data.
   1. Generate action chunks with **GR00T-H-N1.7** (`nvidia/GR00T-H-N1.7`, fine-tuned on Open-H incl. SutureBot).
   2. Compare with ACT (Segment 3, owner Noah Barnes) using offline metrics.
@@ -106,7 +106,7 @@ This is in line with the Open-H report (≈0.01–0.02 / 0.80–0.85). Visually,
 7. **Automation: done.** `setup.sh` symlinks the Cosmos checkpoints. `start_services.sh` waits for the old gateway to exit (there was a restart race), waits for the worker, and warms the cache. A full teardown → `start_services.sh` restore was tested by moving the cache aside. Not done: making the Launchable run setup automatically.
 8. **Segment 3 alignment: drafted.** `ACT_INTERFACE.md` describes the file format, protocol, metrics and hand-off for Noah. The ACT hook was tested end to end with a stand-in file.
 
-**Before Nov 9:** put the final secure link + API key in the notebook / slides (see `REBUILD.md`); one real-Colab pass; send `ACT_INTERFACE.md` to Noah; full dress rehearsal.
+**Before Nov 12** (dress rehearsal Nov 10): put the final secure link + API key in the notebook / slides (see `REBUILD.md`); one real-Colab pass; send `ACT_INTERFACE.md` to Noah; full dress rehearsal.
 
 ## 6. File map (`~/seg4` = `notebooks/segment4/` in the user's repo)
 
@@ -142,7 +142,7 @@ This is in line with the Open-H report (≈0.01–0.02 / 0.80–0.85). Visually,
 - Don't commit the user's untracked personal files (CV PDFs, LaTeX build files, `.DS_Store`) in the repo root. If pushing, push only `notebooks/segment4/` on a branch, and only when the user asks.
 - Keep the notebook runnable on **free CPU Colab** with no NVIDIA packages; all GPU work stays on this box.
 - Main-thread notebook cells must also work in `cache` mode. Explore cells must not depend on state created by other explore cells.
-- The tutorial is **Nov 9** and the risk notes say "rehearsal Nov 9". Push for a full dress rehearsal (~30 concurrent users) before then.
+- The tutorial is **Nov 12, 2026, 2–6 pm CT**. The full dress rehearsal (~30 concurrent users) is **Nov 10**.
 
 ## 9. Sources
 

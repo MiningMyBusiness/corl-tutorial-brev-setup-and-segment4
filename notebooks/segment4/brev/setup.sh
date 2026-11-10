@@ -17,6 +17,10 @@ if [ "$DRV" -lt 580 ]; then
   echo "!! Driver $DRV < 580. Cosmos-H-Dreams needs R580+/CUDA 13. Pick another instance type."; exit 1
 fi
 
+# GR00T-H decodes the AV1 videos with torchcodec, which needs the system FFmpeg libraries.
+# Some Brev images don't ship them ("libavutil.so.5x: cannot open shared object file").
+command -v ffmpeg >/dev/null || { sudo apt-get update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ffmpeg; }
+
 command -v uv >/dev/null || curl -LsSf https://astral.sh/uv/install.sh | sh
 export PATH="$HOME/.local/bin:$PATH"
 uv tool install -q "huggingface_hub[cli]" || true
