@@ -114,6 +114,7 @@ This is in line with the Open-H report (≈0.01–0.02 / 0.80–0.85). Visually,
 |---|---|
 | `segment4_vla_world_model.ipynb` | Participant Colab notebook, no outputs (built from a generator; edit the JSON directly or regenerate). |
 | `segment4_vla_world_model_executed.ipynb` | Same notebook run end to end through the secure link (Nov 4, ep 1441), outputs saved, API key blanked. Reference / slide material; regenerate after changes. |
+| `segment4_vla_world_model_v2.ipynb` | v2 (Nov 10), v1 kept as is: action plots in mm / rad, Explore A/B accept off-script or typed instructions, Explore C has 10 perturbations shown next to the real video and the recorded-actions rollout. Run end to end on the box in `api` and `cache` modes. |
 | `server/gateway.py` | FastAPI on :8000. GR00T-H loaded in-process (`Gr00tPolicy`, official `LeRobotEpisodeLoader` / `extract_step_data` / `parse_*_gr00t` helpers). Disk cache in `/data/shared/cache`; single Cosmos job queue. Endpoints: `/health`, `/v1/episodes`, `/v1/groot/act`, `/v1/groot/open_loop`, `/v1/cosmos/dream` (async), `/v1/jobs/{id}`, `/v1/files/{name}`. |
 | `server/cosmos_worker.py` | FastAPI on 127.0.0.1:8001 inside the `seg4-cosmos` container. Extracts the start frame (ffmpeg, 512×288), converts actions, and runs the repo's `CosmoshRunner` kept resident on one GPU thread (`COSMOS_RESIDENT=0` = old `flashdreams-run` subprocess per job). Runs `cosmos_actions.ar_steps(blocks)` AR steps and trims the output to context + 12·blocks frames. Env: `COSMOS_STATS`, `COSMOS_CKPT`, `COSMOS_RECIPE`. |
 | `server/cosmos_actions.py` | abs16 (xyz + quat **xyzw** + jaw per arm, 30 Hz) + context state → hybrid-relative 20-D at stride 3 → z-score + pad to 44. Matches the teacher repo exactly. |
@@ -123,6 +124,7 @@ This is in line with the Open-H report (≈0.01–0.02 / 0.80–0.85). Visually,
 | `server/precompute.py` | Warms the cache for the main thread and writes `bundle_<ep>/` + `seg4_bundle_<ep>.zip` for the notebook's cache backend. Run automatically by `start_services.sh`. |
 | `server/load_test.py` | Simulates a room: N users of cached main-thread calls, N uncached GR00T calls, D uncached dreams; reports latency + peak GPU memory. Works against localhost or the secure link. |
 | `ACT_INTERFACE.md` | For Noah: what ACT must output to appear in the Segment 4 comparison. |
+| `CLOSED_LOOP.md` | Plan for running GR00T-H inside Cosmos-H-Dreams (endoscope-only `jhu_imerse_dvrk_mono`). Not implemented. |
 | `server/validate_cosmos.py` | Format check: dreams recorded + perturbed actions and scores them vs the real video. Must print PASS. |
 | `server/verify_cosmos_format.py`, `server/inspect_cosmos_code.py` | Obsolete diagnostics from before §4 was resolved. Left on the box, not in the repo copy. |
 | `brev/setup.sh` | One-time, re-runnable install (driver check, uv, both repos, checkpoints, Docker build, SutureBot test split, API key). Needs `HF_TOKEN` env; optional `API_KEY` to keep the slide key. |

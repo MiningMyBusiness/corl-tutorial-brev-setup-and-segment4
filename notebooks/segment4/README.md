@@ -4,6 +4,7 @@
 segment4/
   segment4_vla_world_model.ipynb   participant notebook (Colab, CPU is enough)
   segment4_vla_world_model_executed.ipynb   same, with saved outputs from a full run (reference)
+  segment4_vla_world_model_v2.ipynb   v2: plot units (mm / rad), more instructions and perturbations to try
   server/gateway.py                public API: GR00T-H in-process, queues Cosmos jobs
   server/cosmos_worker.py          runs inside the Cosmos-H-Dreams container (localhost:8001)
   server/cosmos_actions.py         16-D absolute -> Cosmos hybrid-relative actions (teacher repo's training format)
@@ -16,6 +17,7 @@ segment4/
   brev/setup.sh, start_services.sh one-time setup / start everything
   REBUILD.md                       what to change after rebuilding the Launchable
   ACT_INTERFACE.md                 what Segment 3 (ACT) must output to join the comparison
+  CLOSED_LOOP.md                   plan for GR00T-H <-> Cosmos closed loop (not implemented)
 ```
 
 ## Brev Launchable settings
