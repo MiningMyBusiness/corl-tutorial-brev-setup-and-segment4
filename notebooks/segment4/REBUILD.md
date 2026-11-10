@@ -17,7 +17,7 @@ Launchable settings (see README): 1 GPU with 40 GB or more, **driver R580+**, 20
 
 | Value | Changes on rebuild? | Update |
 |---|---|---|
-| **Secure-link URL** (now `https://corl-seg4-1ydgfxbcn.gobrev.dev`) | **Yes**, a new one per instance | Notebook cell 2 `API_URL` default, slides / handout. Re-run the load test against it (below). |
+| **Secure-link URL** (now `https://corl-seg4-5xptyrp9u.gobrev.dev`) | **Yes**, a new one per instance | Notebook cell 2 `API_URL` default, slides / handout. Re-run the load test against it (below). |
 | **API key** (`/data/seg4.env`) | Yes, random, **unless** you pass `API_KEY=` to `setup.sh` | Slides / handout. Never commit it. Passing the old key avoids the change. |
 | `HF_TOKEN` | Only needed by `setup.sh` (model downloads) and `upload_bundles.py` | Pass as env var. Never write it to a file. |
 | HF cache dataset `kdb6df/corl2026-seg4-cache` | No. It lives on HF | Re-upload only if models, start frames or server code change: `HF_TOKEN=... uv run --with huggingface_hub python ~/seg4/server/upload_bundles.py` |
