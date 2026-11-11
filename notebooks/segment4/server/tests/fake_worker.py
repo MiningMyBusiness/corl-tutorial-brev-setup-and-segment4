@@ -46,6 +46,7 @@ def generate(req: GenReq):
     ctx = cv2.cvtColor(cv2.imread(str(png)), cv2.COLOR_BGR2RGB)
     a16, ref = np.load(req.actions_npy), np.load(req.ref_state_npy)
     acts = cosmos_actions.to_cosmos(a16, ref, req.blocks, STATS)   # real conversion, real shapes
+    np.save(SHARED / "inputs" / f"{req.job_id}_cosmos_actions.npy", acts)   # like the real worker
     n = cosmos_actions.n_frames(req.blocks)
     frames = np.stack([ctx] + [np.roll(ctx, 2 * (i + 1), axis=1) for i in range(n)])
     out = SHARED / "outputs" / req.job_id

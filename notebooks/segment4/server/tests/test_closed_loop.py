@@ -1,7 +1,7 @@
 """Tests for the closed-loop gateway changes. Needs: live gateway (:8000), test gateway (:8010)
-with SHARED_DIR=/data/shared_dev, and a worker on :8012 (fake_worker.py, or the real one).
+with SHARED_DIR=/data/shared_dev (or $TEST_SHARED), and a worker (fake_worker.py on :8012, or the real one).
 Usage: python test_closed_loop.py <seg4/server dir> [--real-cosmos]"""
-import json, sys, time
+import json, os, sys, time
 from pathlib import Path
 import numpy as np, pandas as pd, requests, cv2
 
@@ -12,7 +12,7 @@ REAL = "--real-cosmos" in sys.argv
 LIVE, DEV = "http://localhost:8000", "http://localhost:8010"
 LIVE_KEY = open("/data/seg4.env").read().split("=", 1)[1].strip()
 H_LIVE, H_DEV = {"X-API-Key": LIVE_KEY}, {"X-API-Key": "devkey"}
-SHARED = Path("/data/shared_dev")
+SHARED = Path(os.environ.get("TEST_SHARED", "/data/shared_dev"))
 LOG = SHARED / "fake_worker_log.jsonl"
 fails = []
 

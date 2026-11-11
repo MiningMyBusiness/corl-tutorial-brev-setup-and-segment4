@@ -277,7 +277,8 @@ def run_closed_loop(job_id: str, ep: int, f0: int, iters: int, policy: str, inst
         frames.extend(gen[1:])
         actions.append(np.asarray(kept, np.float32))
         img, state = gen[-1], unit_quats(nxt)
-        tmp += [png, act_p, ref_p, OUT / f"{sub}.npy", OUT / f"{sub}.mp4"]
+        tmp += [png, act_p, ref_p, OUT / f"{sub}.npy", OUT / f"{sub}.mp4",
+                SHARED / "inputs" / f"{sub}_cosmos_actions.npy"]   # written by the worker
     write_mp4(np.stack(frames), OUT / f"{job_id}.mp4")
     np.save(OUT / f"{job_id}_actions.npy", np.concatenate(actions))   # (36*iters, 16) commanded, 30 Hz
     for p in tmp:
