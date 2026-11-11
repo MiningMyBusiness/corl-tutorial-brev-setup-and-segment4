@@ -19,20 +19,24 @@ segment4/
   brev/setup.sh, start_services.sh one-time setup / start everything
   REBUILD.md                       what to change after rebuilding the Launchable
   ACT_INTERFACE.md                 what Segment 3 (ACT) must output to join the comparison
-  CLOSED_LOOP.md                   plan for GR00T-H <-> Cosmos closed loop (not implemented)
+  CLOSED_LOOP.md                   design + status of the GR00T-H <-> Cosmos closed loop (live since Nov 11)
+  server/act_policy.py, act_precompute.py   SutureBot ACT (Segment 3) wrapper + offline predictions for v4
 ```
 
+Setting up a second (backup) server: see `REBUILD.md`, "Backup server".
+
 ## Brev Launchable settings
-- **Compute:** 1 GPU with at least 40 GB (L40S 48 GB or A100 80 GB). Both models together need about 25 GB, so there's headroom. **Driver R580+ is required** (Cosmos-H-Dreams needs CUDA 13). `setup.sh` stops if the driver is older.
+- **Compute:** 1 GPU with at least 40 GB (L40S 48 GB or A100 80 GB). GR00T-H (two embodiments) and Cosmos together use about 24–29 GB, so there's headroom. **Driver R580+ is required** (Cosmos-H-Dreams needs CUDA 13). `setup.sh` stops if the driver is older.
 - **Disk:** at least 200 GB (two repos, two Docker/uv environments, checkpoints, the SutureBot test split).
 - **Software:** VM Mode with Jupyter. Setup script = `brev/setup.sh`. Environment variable: `HF_TOKEN`.
 - **Ports:** expose **8000** (a Brev secure link works and needs no Brev login; tested Nov 4). That's the gateway, and the `X-API-Key` header is its only auth. Don't expose 8001 or 5555.
 
 ## Run order (from a Jupyter terminal on the box)
 ```bash
-git clone <this repo> ~/seg4            # or upload the segment4 folder to ~/seg4
+git clone https://github.com/MiningMyBusiness/corl-tutorial-brev-setup-and-segment4.git ~/repo
+ln -s ~/repo/notebooks/segment4 ~/seg4   # the scripts expect ~/seg4 (or set SEG4=)
 HF_TOKEN=hf_xxx API_KEY=<slide key> bash ~/seg4/brev/setup.sh
-bash ~/seg4/brev/start_services.sh     # defaults: all held-out clips 1441-1451, start frames in DEMO_FRAMES
+bash ~/seg4/brev/start_services.sh     # ~15 min cold; defaults: all held-out clips 1441-1451, start frames in DEMO_FRAMES
 #   -> starts GR00T gateway + resident Cosmos worker, warms the cache, writes /data/shared/seg4_bundle_<ep>.zip
 cd ~/work/GR00T-H && uv run --with scikit-image python ~/seg4/server/validate_cosmos.py --episode 1441 --frame 345
 #   -> must print PASS (recorded actions clearly beat a frozen frame)
