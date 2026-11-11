@@ -54,6 +54,8 @@ class GenReq(BaseModel):
     actions_npy: str      # (T,16) absolute @30 Hz, row 0 = context frame
     ref_state_npy: str    # (16,) observed state at the context frame
     blocks: int = 6
+    input_png: str | None = None  # context frame to start from (closed loop: the last generated
+                                  # frame); must live in SHARED/inputs. None = cut it from the video
 
 
 def _episode_video(ep: int) -> Path:
@@ -173,8 +175,13 @@ def health():
 def generate(req: GenReq):
     t0 = time.time()
     inp, out = SHARED / "inputs", SHARED / "outputs"
-    png = inp / f"{req.job_id}_frame.png"
-    _extract_frame(req.episode, req.frame, png)
+    if req.input_png:
+        png = Path(req.input_png).resolve()
+        if inp.resolve() not in png.parents or not png.exists():
+            raise HTTPException(400, "input_png must be an existing file in SHARED/inputs")
+    else:
+        png = inp / f"{req.job_id}_frame.png"
+        _extract_frame(req.episode, req.frame, png)
 
     acts = cosmos_actions.to_cosmos(np.load(req.actions_npy), np.load(req.ref_state_npy),
                                     req.blocks, str(REPO / STATS))
