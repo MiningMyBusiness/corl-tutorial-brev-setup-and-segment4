@@ -1,6 +1,6 @@
 # Closed loop inside the world model
 
-Status, Nov 10: **server side built on branch `seg4-closed-loop`, tested with a stand-in Cosmos worker; not yet run with the real Cosmos-H-Dreams, not deployed, no notebook section yet.** See "Implementation status" at the end.
+Status, Nov 11: **deployed and in the notebook.** Server merged (PR #5) and live; tested against the real Cosmos-H-Dreams worker; closed loops precomputed for all 11 clips and uploaded to the HF cache; notebook v3 section 5 + Explore F. Load test with many concurrent closed loops not done yet. See "Implementation status" at the end.
 
 ## The idea
 
@@ -118,3 +118,11 @@ All additive: the current endpoints and cache stay as they are.
 1. Run with the **real** Cosmos worker (needs the live worker swapped to this branch's `cosmos_worker.py`; backward compatible, about 2.5 min without new Cosmos videos while it warms up) and look at the videos. Then rerun the tests with `--real-cosmos`, and time one full 1441 run.
 2. Deploy: merge, `start_services.sh` (gateway +6 GB GPU, ~28 GB idle), re-precompute, and decide whether to re-upload the bundles to HF.
 3. Notebook section (v3 or v2 Explore), load test with ~10 concurrent closed loops.
+
+## Nov 11 update
+
+- **Real Cosmos run:** all tests in `server/tests/test_closed_loop.py --real-cosmos` pass. One bug found and fixed: the worker's per-iteration `*_cosmos_actions.npy` files were left in `SHARED/inputs`; the gateway now deletes them, and the CPU stand-in writes them too.
+- **Timing (L40S):** about 1.7 s per turn of the loop; 1441 from frame 345 (7 turns, 8.4 s of video) takes 12 s. Cosmos is not bit-for-bit repeatable, so a fresh run of the same request differs slightly (GR00T-H commanded vs recorded xyz MAE 3.1 vs 3.4 mm over 8.4 s on two runs); precomputed results are cached, so the notebook always shows the same one.
+- **Deployed:** merged, `start_services.sh` restarted (29 GB GPU in use), bundles rebuilt with `closed_{groot,recorded}.mp4` + actions (1.4–2.1 MB each, old ones in `/data/bundles_backup_nov11/`), uploaded to `kdb6df/corl2026-seg4-cache`.
+- **Notebook:** `segment4_vla_world_model_v3.ipynb`. Run headless end to end against the live server and in `cache` mode.
+- **Still open:** load test with ~10 concurrent live closed loops (Explore F); a real-Colab pass of v3.
