@@ -26,6 +26,8 @@ def main():
     ap.add_argument("--alt_instructions", default="needle pickup,needle throw,knot tying")
     ap.add_argument("--out", default="bundle")
     ap.add_argument("--closed_loop_iters", type=int, default=20, help="capped by the server at the clip's end; 0 = skip")
+    ap.add_argument("--act_url", default="https://huggingface.co/kdb6df/corl2026-suturebot-act/resolve/main/predictions/act_{episode}.npz",
+                    help="SutureBot ACT predictions (act_precompute.py); '' = skip the ACT rollout")
     a = ap.parse_args()
     H = {"X-API-Key": a.key}
     out = Path(a.out); out.mkdir(exist_ok=True)
@@ -54,6 +56,24 @@ def main():
         print(src, j.get("status"), j.get("error", ""))
         if j.get("status") == "done":
             b["dreams"][src] = fetch(j["video"], f"dream_{src}.mp4")
+    # Cosmos driven by ACT's actions (precomputed offline, act_precompute.py). Same request as the notebook
+    # sends, so the notebook's live call is a cache hit.
+    if a.act_url:
+        r = requests.get(a.act_url.format(episode=a.episode), timeout=120)
+        if r.ok:
+            import io
+            import numpy as np
+            z = np.load(io.BytesIO(r.content))
+            if int(z["start_frame"]) == a.frame:
+                j = finish(post("/v1/cosmos/dream", {"episode": a.episode, "frame": a.frame, "action_source": "custom",
+                                                     "blocks": a.blocks, "actions": z["dream"].tolist()}))
+                print("act", j.get("status"), j.get("error", ""))
+                if j.get("status") == "done":
+                    b["dreams"]["act"] = fetch(j["video"], "dream_act.mp4")
+            else:
+                print(f"act: predictions start at {int(z['start_frame'])}, not {a.frame}; skipped")
+        else:
+            print("act: no predictions at", a.act_url.format(episode=a.episode), r.status_code)
     files = list(b["dreams"].values())
     # closed loop (CLOSED_LOOP.md): only if this server has it switched on
     if a.closed_loop_iters and requests.get(a.url + "/health").json().get("closed_loop"):
