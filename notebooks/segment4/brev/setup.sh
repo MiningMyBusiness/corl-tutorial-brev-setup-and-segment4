@@ -9,6 +9,9 @@ WORK=${WORK:-$HOME/work}
 DATA=${DATA:-/data}
 mkdir -p "$WORK"; sudo mkdir -p "$DATA"; sudo chown -R "$USER" "$DATA"
 mkdir -p "$DATA/shared"
+# Repo versions the tutorial was tested with (Nov 11). Override with GROOT_REF=main / COSMOS_REF=main.
+GROOT_REF=${GROOT_REF:-d8369db7c85ae0ae9f2cbd08b5ec2ca52d69af55}
+COSMOS_REF=${COSMOS_REF:-dabb62f95c1b453d7a257a86ae222e9946a9b5e1}
 
 echo "== GPU / driver =="
 nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv
@@ -30,6 +33,7 @@ echo "== GR00T-H =="
 cd "$WORK"
 [ -d GR00T-H ] || git clone --recurse-submodules https://github.com/NVIDIA-Medtech/GR00T-H.git
 cd GR00T-H
+git fetch -q origin && git checkout -q "$GROOT_REF" && git submodule update -q --init --recursive
 uv sync --python 3.10
 uv pip install -e .
 uv run python -c "import flash_attn" 2>/dev/null || uv pip install flash-attn==2.7.4.post1 --no-build-isolation
@@ -39,6 +43,7 @@ echo "== Cosmos-H-Dreams =="
 cd "$WORK"
 [ -d Cosmos-H-Dreams ] || git clone https://github.com/isaac-for-healthcare/Cosmos-H-Dreams.git
 cd Cosmos-H-Dreams
+git fetch -q origin && git checkout -q "$COSMOS_REF"
 mkdir -p checkpoints
 hf download nvidia/Cosmos-H-Dreams --local-dir checkpoints
 # The HF repo keeps its weights under checkpoints/, so they land in checkpoints/checkpoints/.
@@ -63,4 +68,4 @@ echo "== API key =="
 # Pass API_KEY=... to reuse the key printed on the slides; otherwise a random one is generated.
 [ -f "$DATA/seg4.env" ] || echo "API_KEY=${API_KEY:-$(openssl rand -hex 8)}" > "$DATA/seg4.env"
 cat "$DATA/seg4.env"
-echo "Setup done. Next: bash $SEG4/brev/start_services.sh   (all clips 1441-1451, ~6 min from scratch)"
+echo "Setup done. Next: bash $SEG4/brev/start_services.sh   (all clips 1441-1451, ~15 min from an empty cache)"

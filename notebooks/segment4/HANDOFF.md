@@ -127,11 +127,11 @@ This is in line with the Open-H report (≈0.01–0.02 / 0.80–0.85). Visually,
 | `server/precompute.py` | Warms the cache for the main thread and writes `bundle_<ep>/` + `seg4_bundle_<ep>.zip` for the notebook's cache backend. Run automatically by `start_services.sh`. |
 | `server/load_test.py` | Simulates a room: N users of cached main-thread calls, N uncached GR00T calls, D uncached dreams; reports latency + peak GPU memory. Works against localhost or the secure link. |
 | `ACT_INTERFACE.md` | For Noah: what ACT must output to appear in the Segment 4 comparison. |
-| `CLOSED_LOOP.md` | Plan for running GR00T-H inside Cosmos-H-Dreams (endoscope-only `jhu_imerse_dvrk_mono`). Not implemented. |
+| `CLOSED_LOOP.md` | Design and status of GR00T-H inside Cosmos-H-Dreams (endoscope-only `jhu_imerse_dvrk_mono`). Live since Nov 11 (`/v1/closed_loop`, notebook v3+). |
 | `server/validate_cosmos.py` | Format check: dreams recorded + perturbed actions and scores them vs the real video. Must print PASS. |
 | `server/verify_cosmos_format.py`, `server/inspect_cosmos_code.py` | Obsolete diagnostics from before §4 was resolved. Left on the box, not in the repo copy. |
 | `brev/setup.sh` | One-time, re-runnable install (driver check, uv, both repos, checkpoints, Docker build, SutureBot test split, API key). Needs `HF_TOKEN` env; optional `API_KEY` to keep the slide key. |
-| `REBUILD.md` | What changes when the Launchable is rebuilt from scratch. |
+| `REBUILD.md` | What changes when the Launchable is rebuilt from scratch, and how to stand up a backup server. |
 | `brev/start_services.sh` | (Re)starts the Cosmos container and gateway, then waits for health. Logs: `/data/shared/gateway.log`, `docker logs seg4-cosmos`. |
 
 ## 7. Key technical facts (sourced)
