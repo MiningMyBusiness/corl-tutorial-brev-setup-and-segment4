@@ -116,6 +116,8 @@ This is in line with the Open-H report (≈0.01–0.02 / 0.80–0.85). Visually,
 | `segment4_vla_world_model_executed.ipynb` | Same notebook run end to end through the secure link (Nov 4, ep 1441), outputs saved, API key blanked. Reference / slide material; regenerate after changes. |
 | `segment4_vla_world_model_v2.ipynb` | v2 (Nov 10), v1 kept as is: action plots in mm / rad, Explore A/B accept off-script or typed instructions, Explore C has 10 perturbations shown next to the real video and the recorded-actions rollout. Run end to end on the box in `api` and `cache` modes. |
 | `segment4_vla_world_model_v3.ipynb` | v3 (Nov 11), v2 kept as is: new main-thread section 5, closed loop (GR00T-H endoscope-only ↔ Cosmos-H-Dreams, precomputed for all 11 clips, three-panel video, drift plots, mono vs 3-camera open-loop table); Explore F runs a live closed loop (turns, start frame, instruction). Takeaways renumbered to 6. Run end to end on the box in `api` and `cache` modes. Adds ~3 min to the main thread. |
+| `segment4_vla_world_model_v4.ipynb` | v4 (Nov 11), v3 kept as is: SutureBot ACT (Segment 3's checkpoint) added to section 3 (table row + plot line, needle-throw caveat) and section 4 (2×2 video with a Cosmos + ACT rollout, metrics row); section 5 explains why ACT can't be in the closed loop (needs wrist cameras). ACT predictions are downloaded from `kdb6df/corl2026-suturebot-act` in both backends. Run end to end on the box in `api` and `cache` modes. |
+| `server/act_policy.py`, `server/act_precompute.py`, `server/act_model_card.md` | SutureBot ACT wrapper (same inputs/decoding as the Segment 3 notebook, plus 16-D output), the script that precomputes `predictions/act_<ep>.npz`, and the HF model card. Run offline in their own env; the gateway doesn't load ACT. See "SutureBot ACT" below. |
 | `server/gateway.py` | FastAPI on :8000. GR00T-H loaded in-process (`Gr00tPolicy`, official `LeRobotEpisodeLoader` / `extract_step_data` / `parse_*_gr00t` helpers). Disk cache in `/data/shared/cache`; single Cosmos job queue. Endpoints: `/health`, `/v1/episodes`, `/v1/groot/act`, `/v1/groot/open_loop`, `/v1/cosmos/dream` (async), `/v1/jobs/{id}`, `/v1/files/{name}`. |
 | `server/cosmos_worker.py` | FastAPI on 127.0.0.1:8001 inside the `seg4-cosmos` container. Extracts the start frame (ffmpeg, 512×288), converts actions, and runs the repo's `CosmoshRunner` kept resident on one GPU thread (`COSMOS_RESIDENT=0` = old `flashdreams-run` subprocess per job). Runs `cosmos_actions.ar_steps(blocks)` AR steps and trims the output to context + 12·blocks frames. Env: `COSMOS_STATS`, `COSMOS_CKPT`, `COSMOS_RECIPE`. |
 | `server/cosmos_actions.py` | abs16 (xyz + quat **xyzw** + jaw per arm, 30 Hz) + context state → hybrid-relative 20-D at stride 3 → z-score + pad to 44. Matches the teacher repo exactly. |
@@ -154,3 +156,21 @@ This is in line with the Open-H report (≈0.01–0.02 / 0.80–0.85). Visually,
 - Action conversion spec: https://nvidia-cosmos.github.io/cosmos-cookbook/recipes/post_training/predict2_5/surgical_robotics/post_training.html
 - Open-H-Embodiment report: https://arxiv.org/abs/2604.21017 (also `open-h-embodiment-report.pdf` in the repo root)
 - Brev Launchables: https://docs.nvidia.com/brev/concepts/launchables
+
+## SutureBot ACT (Segment 3 checkpoint), added Nov 11
+
+- **Public copy:** https://huggingface.co/kdb6df/corl2026-suturebot-act : `dot_best_6311.ckpt` (weights only, 492 MB; the 1.4 GB original also held optimizer state, predictions identical), `checkpoint_normalization.json`, model card, and `predictions/act_<ep>.npz` for 1441–1451. Published with the SutureBot authors' permission; they attached no specific license.
+- **Code:** https://github.com/SutureBot/SutureBot/tree/ACT (`src/act/detr`), cloned to `~/work/SutureBot`. No license file in that repo, so we don't copy it; `server/act_policy.py` imports it.
+- **Check:** reproduces the Segment 3 notebook exactly (1441 at frame 150: 1.426 / 1.511 mm at 20 steps, 2.239 / 1.945 mm at 60).
+- **Open loop, all 11 clips (xyz MAE, mm):** GR00T-H 3 cameras 1.21–1.98, ACT 1.26–2.03, hold pose 0.93–1.65, GR00T-H endoscope-only 0.71–1.10. Needle throw (1441–1444) runs without ACT's goal dots, so it's diagnostic only.
+- **Not in the closed loop:** ACT needs both wrist cameras; Cosmos renders only the endoscope.
+- **Rebuild on a new box** (only needed to change the predictions; `precompute.py` downloads them from HF and warms the Cosmos + ACT rollout by default):
+  ```bash
+  git clone --branch ACT https://github.com/SutureBot/SutureBot.git ~/work/SutureBot
+  uv venv --python 3.11 ~/work/act-env
+  VIRTUAL_ENV=~/work/act-env uv pip install --index-strategy unsafe-best-match --extra-index-url https://download.pytorch.org/whl/cu128 \
+      torch==2.9.1 torchvision==0.24.1 transformers==4.41.2 "numpy<2" pandas==2.2.3 pyarrow==19.0.1 av==14.2.0 opencv-python-headless scipy matplotlib ipython huggingface_hub
+  hf download kdb6df/corl2026-suturebot-act --local-dir ~/work/act-release
+  ~/work/act-env/bin/python ~/seg4/server/act_precompute.py --ckpt ~/work/act-release/dot_best_6311.ckpt \
+      --stats ~/work/act-release/checkpoint_normalization.json --suturebot ~/work/SutureBot --out ~/work/act-release/predictions
+  ```

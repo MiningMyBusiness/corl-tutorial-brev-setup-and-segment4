@@ -6,6 +6,7 @@ segment4/
   segment4_vla_world_model_executed.ipynb   same, with saved outputs from a full run (reference)
   segment4_vla_world_model_v2.ipynb   v2: plot units (mm / rad), more instructions and perturbations to try
   segment4_vla_world_model_v3.ipynb   v3: v2 + section 5, GR00T-H in closed loop inside Cosmos-H-Dreams; Explore F runs your own
+  segment4_vla_world_model_v4.ipynb   v4: v3 + SutureBot ACT (Segment 3) in the open-loop comparison and as a third Cosmos rollout
   server/gateway.py                public API: GR00T-H in-process, queues Cosmos jobs
   server/cosmos_worker.py          runs inside the Cosmos-H-Dreams container (localhost:8001)
   server/cosmos_actions.py         16-D absolute -> Cosmos hybrid-relative actions (teacher repo's training format)
